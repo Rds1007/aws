@@ -1,0 +1,49 @@
+import boto3
+import botocore
+from boto3.dynamodb.conditions import Attr
+
+client = boto3.resource('dynamodb',aws_access_key_id='AKIAVLFFKFZS2F2SAEXQ', aws_secret_access_key='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', region_name='us-east-1')
+
+list(client.tables.all())
+
+def scan_database(table, scan_kwargs=None):
+   
+    if scan_kwargs is None:
+        scan_kwargs = {}
+    dynamodb = boto3.resource('dynamodb',aws_access_key_id='AKIAVLFFKFZS2F2SAEXQ', aws_secret_access_key='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', region_name='us-east-1')
+    table = dynamodb.Table(table)
+
+    complete = False
+    records = []
+    while not complete:
+        try:
+            response = table.scan(**scan_kwargs)
+        except botocore.exceptions.ClientError as error:
+            raise Exception('Error quering DB: {}'.format(error))
+
+        records.extend(response.get('Items', []))
+        next_key = response.get('LastEvaluatedKey')
+        scan_kwargs['ExclusiveStartKey'] = next_key
+
+        complete = True if next_key is None else False
+    return records
+    
+if __name__ == '__main__':
+    table_name = "employeeT"
+    [print(i) for i in scan_database(table_name)]
+    
+if __name__ == '__main__':
+    table_name = "employeeT"
+    kwargs = {
+        'FilterExpression': Attr("id").begins_with('ppm')
+    }
+    [print(i) for i in scan_database(table_name, kwargs)]
+
+dynamoDBClient = boto3.client('dynamodb',aws_access_key_id='AKIAVLFFKFZS2F2SAEXQ', aws_secret_access_key='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', region_name='us-east-1')
+table = dynamoDBClient.describe_table(TableName='employeeT')
+print(table)
+
+response = dynamoDBClient.describe_table(TableName='employeeT')
+print(response['Table']['ItemCount'])
+
+
