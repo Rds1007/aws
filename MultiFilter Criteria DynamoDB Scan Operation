@@ -1,0 +1,58 @@
+import boto3
+import botocore
+from boto3.dynamodb.conditions import Attr
+
+
+def scan_database(table, scan_kwargs=None):
+   
+    if scan_kwargs is None:
+        scan_kwargs = {}
+    dynamodb = boto3.resource('dynamodb',aws_access_key_id='AKIAVLFFKFZSR2PIHS2L', aws_secret_access_key='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', region_name='us-east-1')
+    table = dynamodb.Table(table)
+
+    complete = False
+    records = []
+    while not complete:
+        try:
+            response = table.scan(**scan_kwargs)
+        except botocore.exceptions.ClientError as error:
+            raise Exception('Error quering DB: {}'.format(error))
+
+        records.extend(response.get('Items', []))
+        next_key = response.get('LastEvaluatedKey')
+        scan_kwargs['ExclusiveStartKey'] = next_key
+
+        complete = True if next_key is None else False
+    return records
+ 
+ if __name__ == '__main__':
+    table_name = "employee"
+    [print(i) for i in scan_database(table_name)]
+ 
+ Output:
+ {'dept': 'Fin', 'id': 'ppd_627', 'name': '11forfivesix', 'salary': Decimal('36003')}
+{'dept': 'Fin', 'id': 'ppd_429', 'name': '4forfivesix', 'salary': Decimal('34004')}
+{'dept': 'Fin', 'id': 'ppd_927', 'name': '11forfivesix', 'salary': Decimal('35007')}
+{'dept': 'Fin', 'id': 'ppd_426', 'name': '1forfivesix', 'salary': Decimal('34001')}
+{'dept': 'Fin', 'id': 'ppd_426', 'name': 'forfivesix', 'salary': Decimal('3400')}
+{'dept': 'Fin', 'id': 'ppd_528', 'name': '7forfivesix', 'salary': Decimal('34006')}
+{'dept': 'Fin', 'id': 'ppd_527', 'name': '6forfivesix', 'salary': Decimal('34007')}
+{'dept': 'Fin', 'id': 'ppd_428', 'name': '3forfivesix', 'salary': Decimal('34003')}
+{'dept': 'Fin', 'id': 'ppd_626', 'name': '9forfivesix', 'salary': Decimal('35007')}
+{'dept': 'Fin', 'id': 'ppd_526', 'name': '5forfivesix', 'salary': Decimal('34005')}
+{'dept': 'Fin', 'id': 'ppd_529', 'name': '8forfivesix', 'salary': Decimal('34009')}
+{'dept': 'Fin', 'id': 'ppd_427', 'name': '2forfivesix', 'salary': Decimal('34002')}
+
+if __name__ == '__main__':
+    table_name = "employee"
+    kwargs = {
+        'FilterExpression': Attr("salary").eq(35007) & 
+                            Attr("id").begins_with('ppd_') & 
+                            Attr("dept").ne('Hr')
+    }
+    [print(i) for i in scan_database(table_name, kwargs)]
+    
+  Output:
+  {'dept': 'Fin', 'id': 'ppd_927', 'name': '11forfivesix', 'salary': Decimal('35007')}
+{'dept': 'Fin', 'id': 'ppd_626', 'name': '9forfivesix', 'salary': Decimal('35007')}
+
