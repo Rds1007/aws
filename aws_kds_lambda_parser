@@ -1,0 +1,73 @@
+from __future__ import print_function
+
+import base64
+import json
+import boto3
+import os
+import time
+import csv 
+import sys
+
+from xml.etree.ElementTree import XML, fromstring
+import xml.etree.ElementTree as ET
+
+print('Loading function')
+
+
+def lambda_handler(event, context):
+    output = []
+    
+    print(event)
+    
+    for record in event['Records']:
+        payload = base64.b64decode(record["kinesis"]["data"])
+        parsedRecords = parseXML(payload)
+        print(parsedRecords.decode("utf-8"))
+        
+        fullyparsed=parsedRecords.decode("utf-8")
+        # Do custom processing on the payload here
+        #output_record = {'recordId': record["kinesis"]['sequenceNumber'],'result': 'Ok','data': base64.b64encode(parsedRecords)}
+        output_record = {'recordId': record["kinesis"]['sequenceNumber'],'result': 'Ok','data': base64.b64encode(parsedRecords).decode("utf-8")}
+        output.append(output_record)
+
+        print('Successfully processed {} records.'.format(len(event['Records'])))
+        print(output)
+        return {'records': output}
+    
+    
+def parseXML(inputXML):
+    xmlstring =  str(inputXML.decode('utf-8'))
+    
+    # create element tree object
+    root = ET.fromstring(str(xmlstring))
+    #print("Root Tag"+root.tag)
+    
+    # create empty list for items 
+    xmlItems = ""
+  
+    # iterate over employee records
+    for item in root.findall('employee'):
+       #print("child tag name:"+item.tag+" - Child attribute")
+       
+       # Form pipe delimited string, by concatenating XML values
+       record = item.find('first_name').text + "|" + item.find('last_name').text + "|" + item.find('phone').text
+       
+       primaryaddress = ""
+       secondaryaddress = ""
+       
+       # Get primary address and secondary address separately to be concatenated to the original record in sequence
+       for addressitem in item.find('all_address').findall('address'):
+           if(addressitem.find('type').text == "primary"):
+               primaryaddress = addressitem.find('street_address').text + "|" + addressitem.find('state').text + "|" + addressitem.find('zip').text
+           elif(addressitem.find('type').text == "secondary"):
+               secondaryaddress = addressitem.find('street_address').text + "|" + addressitem.find('state').text + "|" + addressitem.find('zip').text
+               
+       #print("Primary Address:"+primaryaddress)
+       #print("Secondary Address:"+secondaryaddress)
+       
+       record += "|" + primaryaddress + "|" + secondaryaddress + "\n"
+       xmlItems += record
+       #print("Record"+record)
+    
+    #print("Final Transformed Output:"+xmlItems)
+    return xmlItems.encode('utf-8')
